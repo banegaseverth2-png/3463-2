@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>智能记账本</title>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<style>
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+  font-family:-apple-system, BlinkMacSystemFont, "PingFang SC", "Microsoft YaHei", sans-serif;
+}
+body{
+  background:#f5f7fa;
+  color:#333;
+  padding-bottom:100px;
+}
+.container{
+  max-width:500px;
+  margin:0 auto;
+  padding:15px;
+}
+
+/* 顶部 */
+.header{
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:15px;
+  box-shadow:0 3px 12px rgba(0,0,0,0.05);
+}
+.header-top{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:15px;
+}
+.month-pick{
+  padding:6px 10px;
+  border:1px solid #eee;
+  border-radius:10px;
+  font-size:14px;
+}
+.stats{
+  display:flex;
+  gap:10px;
+}
+.stat-item{
+  flex:1;
+  text-align:center;
+  padding:10px 0;
+}
+.stat-item h4{
+  font-size:13px;
+  color:#888;
+  margin-bottom:4px;
+}
+.num{
+  font-size:18px;
+  font-weight:bold;
+}
+.income{color:#00b42a;}
+.expense{color:#ff4d4f;}
+.balance{color:#1677ff;}
+
+/* 预算 */
+.budget-box{
+  background:#fff;
+  border-radius:14px;
+  padding:15px;
+  margin-bottom:15px;
+  display:flex;
+  align-items:center;
+  gap:10px;
+}
+.budget-box input{
+  flex:1;
+  padding:10px;
+  border:1px solid #eee;
+  border-radius:10px;
+}
+.budget-box button{
+  padding:10px 12px;
+  background:#1677ff;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+}
+
+/* 图表 */
+.chart-box{
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:15px;
+  height:260px;
+}
+
+/* 表单 */
+.form{
+  background:#fff;
+  border-radius:18px;
+  padding:20px;
+  margin-bottom:15px;
+}
+.form-group{
+  margin-bottom:14px;
+}
+.form-group label{
+  font-size:14px;
+  margin-bottom:6px;
+  display:block;
+  color:#444;
+}
+input,select,textarea{
+  width:100%;
+  padding:13px;
+  border:1px solid #eee;
+  border-radius:12px;
+  font-size:15px;
+  outline:none;
+}
+.btn{
+  width:100%;
+  padding:15px;
+  background:#1677ff;
+  color:#fff;
+  border:none;
+  border-radius:14px;
+  font-size:16px;
+  font-weight:bold;
+}
+.btn-danger{
+  background:#ff4d4f;
+}
+
+/* 列表 */
+.list-head{
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+  margin-bottom:10px;
+}
+.list-head h3{
+  font-size:16px;
+}
+.export-btn{
+  padding:6px 10px;
+  font-size:13px;
+  background:#eee;
+  border:none;
+  border-radius:8px;
+}
+.record{
+  background:#fff;
+  border-radius:14px;
+  padding:16px;
+  margin-bottom:10px;
+  display:flex;
+  justify-content:space-between;
+  align-items:center;
+}
+.record-left{
+  flex:1;
+}
+.record-cate{
+  font-size:15px;
+  font-weight:500;
+  margin-bottom:4px;
+}
+.record-time{
+  font-size:12px;
+  color:#999;
+}
+.record-price{
+  font-size:17px;
+  font-weight:bold;
+  margin-bottom:4px;
+}
+.del{
+  color:#ff4d4f;
+  font-size:13px;
+  background:none;
+  border:none;
+}
+.empty{
+  text-align:center;
+  padding:50px 0;
+  color:#999;
+}
+</style>
+</head>
+<body>
+
+<div class="container">
+  <div class="header">
+    <div class="header-top">
+      <h2>💰 智能记账本</h2>
+      <input type="month" class="month-pick" id="monthPick">
+    </div>
+    <div class="stats">
+      <div class="stat-item">
+        <h4>收入</h4>
+        <div class="num income" id="in">0.00</div>
+      </div>
+      <div class="stat-item">
+        <h4>支出</h4>
+        <div class="num expense" id="out">0.00</div>
+      </div>
+      <div class="stat-item">
+        <h4>结余</h4>
+        <div class="num balance" id="all">0.00</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="budget-box">
+    <input type="number" placeholder="设置本月预算（元）" id="budget">
+    <button onclick="setBudget()">保存</button>
+  </div>
+
+  <div class="chart-box">
+    <canvas id="pieChart"></canvas>
+  </div>
+
+  <div class="form">
+    <div class="form-group">
+      <label>类型</label>
+      <select id="type">
+        <option value="expense">💸 支出</option>
+        <option value="income">💰 收入</option>
+      </select>
+    </div>
+    <div class="form-group">
+      <label>金额</label>
+      <input type="number" id="money" placeholder="请输入金额" step="0.01">
+    </div>
+    <div class="form-group">
+      <label>分类</label>
+      <input id="cate" placeholder="例：餐饮、购物、工资、红包">
+    </div>
+    <div class="form-group">
+      <label>备注</label>
+      <textarea id="note" rows="2"></textarea>
+    </div>
+    <button class="btn" onclick="save()">保存记录</button>
+  </div>
+
+  <div class="list-head">
+    <h3>📜 本月记录</h3>
+    <button class="export-btn" onclick="exportData()">导出记录</button>
+  </div>
+  <div id="list"></div>
+</div>
+
+<script>
+let records = JSON.parse(localStorage.getItem('records')) || [];
+let budget = localStorage.getItem('budget') || 0;
+
+const $ = id => document.getElementById(id);
+const monthPick = $('monthPick');
+monthPick.value = new Date().toISOString().slice(0,7);
+
+window.onload = function(){
+  $('budget').value = budget;
+  monthPick.addEventListener('change',render);
+  render();
+}
+
+function setBudget(){
+  budget = $('budget').value;
+  localStorage.setItem('budget',budget);
+  alert('设置成功');
+  render();
+}
+
+function save(){
+  const type = $('type').value;
+  const money = parseFloat($('money').value);
+  const cate = $('cate').value.trim();
+  if(!money || money<=0 || !cate){
+    alert('请填写完整信息');
+    return;
+  }
+  records.unshift({
+    id:Date.now(),
+    time:new Date().toLocaleString(),
+    month:new Date().toISOString().slice(0,7),
+    type,money,cate,
+    note:$('note').value.trim()
+  });
+  localStorage.setItem('records',JSON.stringify(records));
+  $('money').value='';$('cate').value='';$('note').value='';
+  render();
+}
+
+function render(){
+  const m = monthPick.value;
+  const list = records.filter(i=>i.month===m);
+  let inSum=0,outSum=0;
+  list.forEach(i=>i.type==='income'?inSum+=i.money:outSum+=i.money);
+  $('in').innerText=inSum.toFixed(2);
+  $('out').innerText=outSum.toFixed(2);
+  $('all').innerText=(inSum-outSum).toFixed(2);
+
+  if(budget && outSum>budget*1){
+    alert('⚠️ 本月支出已超预算！');
+  }
+
+  renderChart(list);
+  renderList(list);
+}
+
+function renderChart(list){
+  const expenseList = list.filter(i=>i.type==='expense');
+  const map={};
+  expenseList.forEach(i=>{
+    map[i.cate] = (map[i.cate]||0)+i.money;
+  });
+  new Chart($('pieChart'),{
+    type:'pie',
+    data:{
+      labels:Object.keys(map),
+      datasets:[{data:Object.values(map),backgroundColor:['#ff6b6b','#4ecdc4','#45b7d1','#96ceb4','#ffeaa7']}]
+    },
+    options:{responsive:true,maintainAspectRatio:false}
+  });
+}
+
+function renderList(list){
+  if(list.length===0){
+    $('list').innerHTML='<div class="empty">暂无记录</div>';
+    return;
+  }
+  let html='';
+  list.forEach(item=>{
+    const sign=item.type==='income'?'+':'-';
+    const color=item.type==='income'?'#00b42a':'#ff4d4f';
+    html+=`
+    <div class="record">
+      <div class="record-left">
+        <div class="record-cate">${item.cate}</div>
+        <div class="record-time">${item.time}</div>
+      </div>
+      <div style="text-align:right">
+        <div class="record-price" style="color:${color}">${sign}${item.money.toFixed(2)}</div>
+        <button class="del" onclick="del(${item.id})">删除</button>
+      </div>
+    </div>`;
+  });
+  $('list').innerHTML=html;
+}
+
+function del(id){
+  if(!confirm('确定删除？'))return;
+  records=records.filter(i=>i.id!==id);
+  localStorage.setItem('records',JSON.stringify(records));
+  render();
+}
+
+function exportData(){
+  const m=monthPick.value;
+  const list=records.filter(i=>i.month===m);
+  let content='时间,类型,分类,金额,备注\n';
+  list.forEach(i=>{
+    content+=`${i.time},${i.type==='income'?'收入':'支出'},${i.cate},${i.money},${i.note||''}\n`;
+  });
+  const a=document.createElement('a');
+  a.href='data:text/csv;charset=utf-8,\ufeff'+encodeURIComponent(content);
+  a.download=`记账记录_${m}.csv`;
+  a.click();
+}
+</script>
+</body>
+</html>
